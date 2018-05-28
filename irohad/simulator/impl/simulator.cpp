@@ -19,7 +19,9 @@
 
 #include <boost/range/adaptor/transformed.hpp>
 
+#include "backend/protobuf/empty_block.hpp"
 #include "builders/protobuf/block.hpp"
+#include "builders/protobuf/empty_block.hpp"
 #include "interfaces/iroha_internal/block.hpp"
 #include "interfaces/iroha_internal/proposal.hpp"
 
@@ -108,6 +110,21 @@ namespace iroha {
               return static_cast<const shared_model::proto::Transaction &>(
                   *polymorphic_tx);
             });
+
+      if (proto_txs.empty()) {
+        auto block = std::make_shared<shared_model::proto::EmptyBlock>(
+            shared_model::proto::UnsignedEmptyBlockBuilder()
+                .height(proposal.height())
+                .prevHash(last_block.value()->hash())
+                .createdTime(proposal.createdTime())
+                .build());
+
+        crypto_signer_->sign(*block);
+
+        block_notifier_.get_subscriber().on_next(block);
+        return;
+      }
+
       auto block = std::make_shared<shared_model::proto::Block>(
           shared_model::proto::UnsignedBlockBuilder()
               .height(proposal.height())
@@ -121,7 +138,7 @@ namespace iroha {
       block_notifier_.get_subscriber().on_next(block);
     }
 
-    rxcpp::observable<std::shared_ptr<shared_model::interface::Block>>
+    rxcpp::observable<shared_model::interface::BlockVariantType>
     Simulator::on_block() {
       return block_notifier_.get_observable();
     }

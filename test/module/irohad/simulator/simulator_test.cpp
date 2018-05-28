@@ -20,6 +20,7 @@
 #include "builders/protobuf/proposal.hpp"
 #include "builders/protobuf/transaction.hpp"
 #include "framework/test_subscriber.hpp"
+#include "interfaces/utils/specified_visitor.hpp"
 #include "module/irohad/ametsuchi/ametsuchi_mocks.hpp"
 #include "module/irohad/network/network_mocks.hpp"
 #include "module/irohad/validation/validation_mocks.hpp"
@@ -155,9 +156,14 @@ TEST_F(SimulatorTest, ValidWhenPreviousBlock) {
 
   auto block_wrapper =
       make_test_subscriber<CallExact>(simulator->on_block(), 1);
-  block_wrapper.subscribe([&proposal](auto block) {
-    ASSERT_EQ(block->height(), proposal->height());
-    ASSERT_EQ(block->transactions(), proposal->transactions());
+  block_wrapper.subscribe([&proposal](const auto &block) {
+    auto non_empty_block =
+        boost::apply_visitor(shared_model::interface::SpecifiedVisitor<
+                                 shared_model::interface::Block>(),
+                             block);
+    ASSERT_TRUE(non_empty_block);
+    ASSERT_EQ(non_empty_block->height(), proposal->height());
+    ASSERT_EQ(non_empty_block->transactions(), proposal->transactions());
   });
 
   simulator->process_proposal(*proposal);
