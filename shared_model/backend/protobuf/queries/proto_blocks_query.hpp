@@ -7,6 +7,7 @@
 #define IROHA_SHARED_MODEL_PROTO_BLOCKS_QUERY_HPP
 
 #include "backend/protobuf/common_objects/signature.hpp"
+#include "interfaces/base/signable.hpp"
 #include "interfaces/queries/blocks_query.hpp"
 #include "utils/lazy_initializer.hpp"
 
@@ -44,7 +45,7 @@ namespace shared_model {
       }
 
       // ------------------------| Signable override  |-------------------------
-      const interface::SignatureSetType &signatures() const override {
+      interface::types::SignatureRangeType signatures() const override {
         return *signatures_;
       }
 
@@ -60,11 +61,6 @@ namespace shared_model {
         return true;
       }
 
-      bool clearSignatures() override {
-        signatures_->clear();
-        return (signatures_->size() == 0);
-      }
-
       interface::types::TimestampType createdTime() const override {
         return proto_->meta().created_time();
       }
@@ -78,13 +74,13 @@ namespace shared_model {
       const Lazy<interface::types::BlobType> payload_{
           [this] { return makeBlob(proto_->meta()); }};
 
-      const Lazy<interface::SignatureSetType> signatures_{[this] {
-        interface::SignatureSetType set;
-        if (proto_->has_signature()) {
-          set.emplace(new Signature(proto_->signature()));
-        }
-        return set;
-      }};
+      const Lazy<SignatureSetType<proto::Signature>> signatures_{[this] {
+          SignatureSetType<proto::Signature> set;
+          if (proto_->has_signature()) {
+            set.emplace(proto_->signature());
+          }
+          return set;
+        }};
     };
   }  // namespace proto
 }  // namespace shared_model

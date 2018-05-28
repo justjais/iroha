@@ -1,9 +1,9 @@
 // Overall pipeline looks like the following
-//         
+//
 //   |--Linux-----|----Debug
-//   |            |----Release 
+//   |            |----Release
 //   |    OR
-//   |           
+//   |
 //-- |--Linux ARM-|----Debug
 //   |            |----Release
 //   |    OR
@@ -36,6 +36,7 @@ pipeline {
     SORABOT_TOKEN = credentials('SORABOT_TOKEN')
     SONAR_TOKEN = credentials('SONAR_TOKEN')
     GIT_RAW_BASE_URL = "https://raw.githubusercontent.com/hyperledger/iroha"
+    DOCKER_REGISTRY_BASENAME = "hyperledger/iroha"
 
     IROHA_NETWORK = "iroha-0${CHANGE_ID}-${GIT_COMMIT}-${BUILD_NUMBER}"
     IROHA_POSTGRES_HOST = "pg-0${CHANGE_ID}-${GIT_COMMIT}-${BUILD_NUMBER}"
@@ -67,7 +68,10 @@ pipeline {
       }
       parallel {
         stage ('Linux') {
-          when { expression { return params.Linux } }
+          when {
+            beforeAgent true
+            expression { return params.Linux }
+          }
           agent { label 'x86_64' }
           steps {
             script {
@@ -95,7 +99,10 @@ pipeline {
           }
         }
         stage('ARMv7') {
-          when { expression { return params.ARMv7 } }
+          when {
+            beforeAgent true
+            expression { return params.ARMv7 }
+          }
           agent { label 'armv7' }
           steps {
             script {
@@ -103,7 +110,7 @@ pipeline {
               coverage = load ".jenkinsci/selected-branches-coverage.groovy"
               if (!params.Linux && !params.ARMv8 && !params.MacOS && (coverage.selectedBranchesCoverage(['develop', 'master']))) {
                 debugBuild.doDebugBuild(true)
-              }              
+              }
               else {
                 debugBuild.doDebugBuild()
               }
@@ -123,7 +130,10 @@ pipeline {
           }
         }
         stage('ARMv8') {
-          when { expression { return params.ARMv8 } }
+          when {
+            beforeAgent true
+            expression { return params.ARMv8 }
+          }
           agent { label 'armv8' }
           steps {
             script {
@@ -151,7 +161,10 @@ pipeline {
           }
         }
         stage('MacOS'){
-          when { expression { return params.MacOS } }
+          when {
+            beforeAgent true
+            expression { return params.MacOS }
+          }
           agent { label 'mac' }
           steps {
             script {
@@ -232,7 +245,7 @@ pipeline {
                       def artifacts = load ".jenkinsci/artifacts.groovy"
                       def commit = env.GIT_COMMIT
                       filePaths = [ '\$(pwd)/build/*.tar.gz' ]
-                      artifacts.uploadArtifacts(filePaths, sprintf('/iroha/macos/%1$s-%2$s-%3$s', [GIT_LOCAL_BRANCH, sh(script: 'date "+%Y%m%d"', returnStdout: true).trim(), commit.substring(0,6)]))                        
+                      artifacts.uploadArtifacts(filePaths, sprintf('/iroha/macos/%1$s-%2$s-%3$s', [GIT_LOCAL_BRANCH, sh(script: 'date "+%Y%m%d"', returnStdout: true).trim(), commit.substring(0,6)]))
                     }
                   }
                   finally {
@@ -251,11 +264,14 @@ pipeline {
     }
     stage('Build Release') {
       when {
-        expression { params.BUILD_TYPE == 'Release' }      
+        expression { params.BUILD_TYPE == 'Release' }
       }
       parallel {
         stage('Linux') {
-          when { expression { return params.Linux } }
+          when {
+            beforeAgent true
+            expression { return params.Linux }
+          }
           agent { label 'x86_64' }
           steps {
             script {
@@ -273,7 +289,10 @@ pipeline {
           }
         }
         stage('ARMv7') {
-          when { expression { return params.ARMv7 } }
+          when {
+            beforeAgent true
+            expression { return params.ARMv7 }
+          }
           agent { label 'armv7' }
           steps {
             script {
@@ -288,10 +307,13 @@ pipeline {
                 post.linuxPostStep()
               }
             }
-          }           
+          }
         }
         stage('ARMv8') {
-          when { expression { return params.ARMv8 } }
+          when {
+            beforeAgent true
+            expression { return params.ARMv8 }
+          }
           agent { label 'armv8' }
           steps {
             script {
@@ -306,10 +328,13 @@ pipeline {
                 post.linuxPostStep()
               }
             }
-          }          
+          }
         }
         stage('MacOS') {
-          when { expression { return params.MacOS } }
+          when {
+            beforeAgent true
+            expression { return params.MacOS }
+          }
           agent { label 'mac' }
           steps {
             script {
@@ -341,6 +366,7 @@ pipeline {
     }
     stage('Build docs') {
       when {
+        beforeAgent true
         allOf {
           expression { return params.Doxygen }
           expression { GIT_LOCAL_BRANCH ==~ /(master|develop)/ }
@@ -361,6 +387,7 @@ pipeline {
     }
     stage('Build bindings') {
       when {
+        beforeAgent true
         anyOf {
           expression { return params.PythonBindings }
           expression { return params.JavaBindings }
@@ -375,11 +402,13 @@ pipeline {
         script {
           def bindings = load ".jenkinsci/bindings.groovy"
           def dPullOrBuild = load ".jenkinsci/docker-pull-or-build.groovy"
+          def pCommit = load ".jenkinsci/previous-commit.groovy"
           def platform = sh(script: 'uname -m', returnStdout: true).trim()
+          def previousCommit = pCommit.previousCommitOrCurrent()
           if (params.JavaBindings) {
             iC = dPullOrBuild.dockerPullOrUpdate("$platform-develop-build",
                                                  "${env.GIT_RAW_BASE_URL}/${env.GIT_COMMIT}/docker/develop/Dockerfile",
-                                                 "${env.GIT_RAW_BASE_URL}/${env.GIT_PREVIOUS_COMMIT}/docker/develop/Dockerfile",
+                                                 "${env.GIT_RAW_BASE_URL}/${previousCommit}/docker/develop/Dockerfile",
                                                  "${env.GIT_RAW_BASE_URL}/develop/docker/develop/Dockerfile",
                                                  ['PARALLELISM': params.PARALLELISM])
             iC.inside("-v /tmp/${env.GIT_COMMIT}/bindings-artifact:/tmp/bindings-artifact") {
@@ -389,7 +418,7 @@ pipeline {
           if (params.PythonBindings) {
             iC = dPullOrBuild.dockerPullOrUpdate("$platform-develop-build",
                                                  "${env.GIT_RAW_BASE_URL}/${env.GIT_COMMIT}/docker/develop/Dockerfile",
-                                                 "${env.GIT_RAW_BASE_URL}/${env.GIT_PREVIOUS_COMMIT}/docker/develop/Dockerfile",
+                                                 "${env.GIT_RAW_BASE_URL}/${previousCommit}/docker/develop/Dockerfile",
                                                  "${env.GIT_RAW_BASE_URL}/develop/docker/develop/Dockerfile",
                                                  ['PARALLELISM': params.PARALLELISM])
             iC.inside("-v /tmp/${env.GIT_COMMIT}/bindings-artifact:/tmp/bindings-artifact") {
@@ -399,7 +428,7 @@ pipeline {
           if (params.AndroidBindings) {
             iC = dPullOrBuild.dockerPullOrUpdate("android-${params.ABPlatform}-${params.ABBuildType}",
                                                  "${env.GIT_RAW_BASE_URL}/${env.GIT_COMMIT}/docker/android/Dockerfile",
-                                                 "${env.GIT_RAW_BASE_URL}/${env.GIT_PREVIOUS_COMMIT}/docker/android/Dockerfile",
+                                                 "${env.GIT_RAW_BASE_URL}/${previousCommit}/docker/android/Dockerfile",
                                                  "${env.GIT_RAW_BASE_URL}/develop/docker/android/Dockerfile",
                                                  ['PARALLELISM': params.PARALLELISM, 'PLATFORM': params.ABPlatform, 'BUILD_TYPE': params.ABBuildType])
             sh "curl -L -o /tmp/${env.GIT_COMMIT}/entrypoint.sh ${env.GIT_RAW_BASE_URL}/${env.GIT_COMMIT}/docker/android/entrypoint.sh"
@@ -407,7 +436,7 @@ pipeline {
             iC.inside("-v /tmp/${env.GIT_COMMIT}/entrypoint.sh:/entrypoint.sh:ro -v /tmp/${env.GIT_COMMIT}/bindings-artifact:/tmp/bindings-artifact") {
               bindings.doAndroidBindings(params.ABABIVersion)
             }
-          }          
+          }
         }
       }
       post {

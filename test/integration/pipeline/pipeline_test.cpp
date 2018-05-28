@@ -54,7 +54,7 @@ TEST(PipelineIntegrationTest, SendQuery) {
             shared_model::interface::StatefulFailedErrorResponse>(),
         status.get()));
   };
-  integration_framework::IntegrationTestFramework()
+  integration_framework::IntegrationTestFramework(1)
       .setInitialState(kAdminKeypair)
       .sendQuery(query, check)
       .done();
@@ -71,6 +71,7 @@ TEST(PipelineIntegrationTest, SendTx) {
                 .createdTime(iroha::time::now())
                 .creatorAccountId(kUser)
                 .addAssetQuantity(kUser, kAsset, "1.0")
+                .quorum(1)
                 .build()
                 .signAndAddSignature(
                     shared_model::crypto::DefaultCryptoAlgorithmType::
@@ -88,7 +89,7 @@ TEST(PipelineIntegrationTest, SendTx) {
   auto checkBlock = [](auto &block) {
     ASSERT_EQ(block->transactions().size(), 0);
   };
-  integration_framework::IntegrationTestFramework()
+  integration_framework::IntegrationTestFramework(1)
       .setInitialState(kAdminKeypair)
       .sendTx(tx, checkStatelessValid)
       .checkProposal(checkProposal)

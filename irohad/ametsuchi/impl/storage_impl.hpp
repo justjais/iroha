@@ -20,10 +20,11 @@
 
 #include "ametsuchi/storage.hpp"
 
-#include <cmath>
 #include <boost/optional.hpp>
+#include <cmath>
 #include <pqxx/pqxx>
 #include <shared_mutex>
+#include "ametsuchi/impl/postgres_options.hpp"
 #include "logger/logger.hpp"
 
 namespace iroha {
@@ -43,6 +44,10 @@ namespace iroha {
 
     class StorageImpl : public Storage {
      protected:
+      static expected::Result<bool, std::string> createDatabaseIfNotExist(
+          const std::string &dbname,
+          const std::string &options_str_without_dbname);
+
       static expected::Result<ConnectionContext, std::string> initConnections(
           std::string block_store_dir, std::string postgres_options);
 
@@ -61,7 +66,8 @@ namespace iroha {
        * @param blocks - block for insertion
        * @return true if all blocks are inserted
        */
-      virtual bool insertBlock(const shared_model::interface::Block &block) override;
+      virtual bool insertBlock(
+          const shared_model::interface::Block &block) override;
 
       /**
        * Insert blocks without validation
@@ -69,7 +75,8 @@ namespace iroha {
        * @return true if inserted
        */
       virtual bool insertBlocks(
-          const std::vector<std::shared_ptr<shared_model::interface::Block>> &blocks) override;
+          const std::vector<std::shared_ptr<shared_model::interface::Block>>
+              &blocks) override;
 
       virtual void dropStorage() override;
 
@@ -79,11 +86,14 @@ namespace iroha {
 
       std::shared_ptr<BlockQuery> getBlockQuery() const override;
 
+      rxcpp::observable<std::shared_ptr<shared_model::interface::Block>>
+      on_commit() override;
+
       ~StorageImpl() override;
 
      protected:
       StorageImpl(std::string block_store_dir,
-                  std::string postgres_options,
+                  PostgresOptions postgres_options,
                   std::unique_ptr<FlatFile> block_store,
                   std::unique_ptr<pqxx::lazyconnection> wsv_connection,
                   std::unique_ptr<pqxx::nontransaction> wsv_transaction);
@@ -94,7 +104,7 @@ namespace iroha {
       const std::string block_store_dir_;
 
       // db info
-      const std::string postgres_options_;
+      const PostgresOptions postgres_options_;
 
      private:
       std::unique_ptr<FlatFile> block_store_;
@@ -114,6 +124,9 @@ namespace iroha {
       std::shared_timed_mutex rw_lock_;
 
       logger::Logger log_;
+
+      rxcpp::subjects::subject<std::shared_ptr<shared_model::interface::Block>>
+          notifier_;
 
      protected:
       const std::string init_ = R"(

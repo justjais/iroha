@@ -19,14 +19,15 @@
 #include "builders/protobuf/common_objects/proto_account_builder.hpp"
 #include "cryptography/crypto_provider/crypto_defaults.hpp"
 #include "cryptography/keypair.hpp"
+#include "execution/query_execution.hpp"
 #include "framework/test_subscriber.hpp"
-#include "model/query_execution.hpp"
 #include "module/irohad/ametsuchi/ametsuchi_mocks.hpp"
 #include "module/irohad/validation/validation_mocks.hpp"
 #include "module/shared_model/builders/protobuf/test_query_builder.hpp"
 #include "module/shared_model/builders/protobuf/test_query_response_builder.hpp"
 #include "network/ordering_gate.hpp"
 #include "torii/processor/query_processor_impl.hpp"
+#include "utils/query_error_response_visitor.hpp"
 #include "validators/permissions.hpp"
 
 using namespace iroha;
@@ -34,9 +35,9 @@ using namespace iroha::ametsuchi;
 using namespace iroha::validation;
 using namespace framework::test_subscriber;
 
+using ::testing::_;
 using ::testing::A;
 using ::testing::Return;
-using ::testing::_;
 
 class QueryProcessorTest : public ::testing::Test {
  public:
@@ -65,8 +66,8 @@ TEST_F(QueryProcessorTest, QueryProcessorWhereInvokeInvalidQuery) {
   auto wsv_queries = std::make_shared<MockWsvQuery>();
   auto block_queries = std::make_shared<MockBlockQuery>();
   auto storage = std::make_shared<MockStorage>();
-  auto qpf = std::make_unique<model::QueryProcessingFactory>(wsv_queries,
-                                                             block_queries);
+  auto qpf =
+      std::make_unique<QueryProcessingFactory>(wsv_queries, block_queries);
 
   iroha::torii::QueryProcessorImpl qpi(storage);
 
@@ -111,14 +112,14 @@ TEST_F(QueryProcessorTest, QueryProcessorWhereInvokeInvalidQuery) {
 /**
  * @given account, ametsuchi queries and query processing factory
  * @when signed with wrong key
- * @then Query Processor should return StatefullFailed
+ * @then Query Processor should return StatefulFailed
  */
 TEST_F(QueryProcessorTest, QueryProcessorWithWrongKey) {
   auto wsv_queries = std::make_shared<MockWsvQuery>();
   auto block_queries = std::make_shared<MockBlockQuery>();
   auto storage = std::make_shared<MockStorage>();
-  auto qpf = std::make_unique<model::QueryProcessingFactory>(wsv_queries,
-                                                             block_queries);
+  auto qpf =
+      std::make_unique<QueryProcessingFactory>(wsv_queries, block_queries);
 
   iroha::torii::QueryProcessorImpl qpi(storage);
 
@@ -146,11 +147,10 @@ TEST_F(QueryProcessorTest, QueryProcessorWithWrongKey) {
 
   auto wrapper = make_test_subscriber<CallExact>(qpi.queryNotifier(), 1);
   wrapper.subscribe([](auto response) {
-    auto resp = boost::get<shared_model::detail::PolymorphicWrapper<
-        shared_model::interface::ErrorQueryResponse>>(response->get());
-    ASSERT_NO_THROW(boost::get<shared_model::detail::PolymorphicWrapper<
-                        shared_model::interface::StatefulFailedErrorResponse>>(
-        resp->get()));
+    ASSERT_TRUE(boost::apply_visitor(
+        shared_model::interface::QueryErrorResponseChecker<
+            shared_model::interface::StatefulFailedErrorResponse>(),
+        response->get()));
   });
   qpi.queryHandle(
       std::make_shared<shared_model::proto::Query>(query.getTransport()));

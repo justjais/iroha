@@ -15,21 +15,26 @@
  * limitations under the License.
  */
 
-#include "model/generators/signature_generator.hpp"
+#include "multi_sig_transactions/mst_processor.hpp"
 
 namespace iroha {
-  namespace model {
-    namespace generators {
 
-      Signature generateSignature(size_t seed) {
-        Signature sign;
-        // sign.pubkey
-        sign.pubkey = generator::random_blob<pubkey_t::size()>(seed);
-        sign.signature = generator::random_blob<sig_t::size()>(
-            generator::random_number(0, seed));
-        return sign;
-      }
+  MstProcessor::MstProcessor() { log_ = logger::log("MstProcessor"); }
 
-    }  // namespace generators
-  }    // namespace model
+  void MstProcessor::propagateTransaction(const DataType transaction) {
+    this->propagateTransactionImpl(transaction);
+  }
+
+  rxcpp::observable<std::shared_ptr<MstState>> MstProcessor::onStateUpdate()
+      const {
+    return this->onStateUpdateImpl();
+  }
+
+  rxcpp::observable<DataType> MstProcessor::onPreparedTransactions() const {
+    return this->onPreparedTransactionsImpl();
+  }
+
+  rxcpp::observable<DataType> MstProcessor::onExpiredTransactions() const {
+    return this->onExpiredTransactionsImpl();
+  }
 }  // namespace iroha
