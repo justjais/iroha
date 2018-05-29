@@ -157,13 +157,13 @@ TEST_F(SimulatorTest, ValidWhenPreviousBlock) {
   auto block_wrapper =
       make_test_subscriber<CallExact>(simulator->on_block(), 1);
   block_wrapper.subscribe([&proposal](const auto &block) {
-    auto non_empty_block =
-        boost::apply_visitor(shared_model::interface::SpecifiedVisitor<
-                                 shared_model::interface::Block>(),
-                             block);
+    auto non_empty_block = boost::apply_visitor(
+        shared_model::interface::SpecifiedVisitor<
+            std::shared_ptr<shared_model::interface::Block>>(),
+        block);
     ASSERT_TRUE(non_empty_block);
-    ASSERT_EQ(non_empty_block->height(), proposal->height());
-    ASSERT_EQ(non_empty_block->transactions(), proposal->transactions());
+    ASSERT_EQ(non_empty_block.value()->height(), proposal->height());
+    ASSERT_EQ(non_empty_block.value()->transactions(), proposal->transactions());
   });
 
   simulator->process_proposal(*proposal);

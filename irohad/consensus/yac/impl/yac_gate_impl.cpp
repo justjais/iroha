@@ -48,8 +48,11 @@ namespace iroha {
             block_loader_(std::move(block_loader)),
             delay_(delay) {
         log_ = logger::log("YacGate");
-        block_creator_->on_block().subscribe(
-            [this](auto block) { this->vote(*block); });
+        block_creator_->on_block().subscribe([this](auto block) {
+          this->vote(
+              *boost::get<std::shared_ptr<shared_model::interface::Block>>(
+                  block));
+        });
       }
 
       void YacGateImpl::vote(const shared_model::interface::Block &block) {

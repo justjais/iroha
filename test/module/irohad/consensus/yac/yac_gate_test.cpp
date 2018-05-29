@@ -24,6 +24,7 @@
 #include "consensus/yac/storage/yac_proposal_storage.hpp"
 #include "cryptography/crypto_provider/crypto_defaults.hpp"
 #include "framework/test_subscriber.hpp"
+#include "interfaces/utils/specified_visitor.hpp"
 #include "module/irohad/consensus/yac/yac_mocks.hpp"
 #include "module/irohad/network/network_mocks.hpp"
 #include "module/irohad/simulator/simulator_mocks.hpp"
@@ -56,8 +57,8 @@ class YacGateTest : public ::testing::Test {
             .build()
             .signAndAddSignature(keypair);
 
-    expected_block = clone(tmp);
-    const auto &signature = *(expected_block->signatures().begin());
+    expected_block_variant = clone(tmp);
+    const auto &signature = *(tmp.signatures().begin());
 
     expected_hash.block_signature = clone(signature);
     message.hash = expected_hash;
@@ -82,7 +83,7 @@ class YacGateTest : public ::testing::Test {
   }
 
   YacHash expected_hash;
-  std::shared_ptr<shared_model::interface::Block> expected_block;
+  shared_model::interface::BlockVariantType expected_block_variant;
   VoteMessage message;
   CommitMessage commit_message;
   rxcpp::observable<CommitMessage> expected_commit;
@@ -99,6 +100,9 @@ class YacGateTest : public ::testing::Test {
  protected:
   YacGateTest() : commit_message(std::vector<VoteMessage>{}) {}
 };
+
+template <typename T>
+class Type;
 
 TEST_F(YacGateTest, YacGateSubscriptionTest) {
   cout << "----------| BlockCreator (block)=> YacGate (vote)=> "
@@ -119,14 +123,20 @@ TEST_F(YacGateTest, YacGateSubscriptionTest) {
 
   // make blocks
   EXPECT_CALL(*block_creator, on_block())
-      .WillOnce(Return(rxcpp::observable<>::just(expected_block)));
+      .WillOnce(Return(rxcpp::observable<>::just(expected_block_variant)));
 
   init();
 
   // verify that yac gate emit expected block
   auto gate_wrapper = make_test_subscriber<CallExact>(gate->on_commit(), 1);
-  gate_wrapper.subscribe(
-      [this](auto block) { ASSERT_EQ(*block, *expected_block); });
+  gate_wrapper.subscribe([this](const auto &block) {
+    auto expected_block = boost::apply_visitor(
+        shared_model::interface::SpecifiedVisitor<
+            std::shared_ptr<shared_model::interface::Block>>(),
+        expected_block_variant);
+    ASSERT_TRUE(expected_block);
+    ASSERT_EQ(*block, *expected_block.value());
+  });
 
   ASSERT_TRUE(gate_wrapper.validate());
 }
@@ -148,7 +158,7 @@ TEST_F(YacGateTest, YacGateSubscribtionTestFailCase) {
 
   // make blocks
   EXPECT_CALL(*block_creator, on_block())
-      .WillOnce(Return(rxcpp::observable<>::just(expected_block)));
+      .WillOnce(Return(rxcpp::observable<>::just(expected_block_variant)));
 
   init();
 }
@@ -158,7 +168,7 @@ TEST_F(YacGateTest, LoadBlockWhenDifferentCommit) {
 
   // make blocks
   EXPECT_CALL(*block_creator, on_block())
-      .WillOnce(Return(rxcpp::observable<>::just(expected_block)));
+      .WillOnce(Return(rxcpp::observable<>::just(expected_block_variant)));
 
   // make hash from block
   EXPECT_CALL(*hash_provider, makeHash(_)).WillOnce(Return(expected_hash));
@@ -180,22 +190,29 @@ TEST_F(YacGateTest, LoadBlockWhenDifferentCommit) {
   // yac consensus
   EXPECT_CALL(*hash_gate, on_commit()).WillOnce(Return(expected_commit));
 
+  auto expected_block = boost::apply_visitor(
+      shared_model::interface::SpecifiedVisitor<
+          std::shared_ptr<shared_model::interface::Block>>(),
+      expected_block_variant);
+  ASSERT_TRUE(expected_block);
   // convert yac hash to model hash
   EXPECT_CALL(*hash_provider, toModelHash(expected_hash))
-      .WillOnce(Return(expected_block->hash()));
+      .WillOnce(Return(expected_block.value()->hash()));
 
   // load block
-  auto sig = expected_block->signatures().begin();
+  auto sig = expected_block.value()->signatures().begin();
   auto &pubkey = sig->publicKey();
-  EXPECT_CALL(*block_loader, retrieveBlock(pubkey, expected_block->hash()))
-      .WillOnce(Return(expected_block));
+  EXPECT_CALL(*block_loader,
+              retrieveBlock(pubkey, expected_block.value()->hash()))
+      .WillOnce(Return(expected_block.value()));
 
   init();
 
   // verify that yac gate emit expected block
   auto gate_wrapper = make_test_subscriber<CallExact>(gate->on_commit(), 1);
-  gate_wrapper.subscribe(
-      [this](auto block) { ASSERT_EQ(*block, *expected_block); });
+  gate_wrapper.subscribe([&expected_block](const auto &block) {
+    ASSERT_EQ(*block, *expected_block.value());
+  });
 
   ASSERT_TRUE(gate_wrapper.validate());
 }
@@ -211,7 +228,7 @@ TEST_F(YacGateTest, LoadBlockWhenDifferentCommitFailFirst) {
 
   // make blocks
   EXPECT_CALL(*block_creator, on_block())
-      .WillOnce(Return(rxcpp::observable<>::just(expected_block)));
+      .WillOnce(Return(rxcpp::observable<>::just(expected_block_variant)));
 
   // make hash from block
   EXPECT_CALL(*hash_provider, makeHash(_)).WillOnce(Return(expected_hash));
@@ -233,23 +250,30 @@ TEST_F(YacGateTest, LoadBlockWhenDifferentCommitFailFirst) {
   // yac consensus
   EXPECT_CALL(*hash_gate, on_commit()).WillOnce(Return(expected_commit));
 
+  auto expected_block = boost::apply_visitor(
+      shared_model::interface::SpecifiedVisitor<
+          std::shared_ptr<shared_model::interface::Block>>(),
+      expected_block_variant);
+  ASSERT_TRUE(expected_block);
   // convert yac hash to model hash
   EXPECT_CALL(*hash_provider, toModelHash(expected_hash))
-      .WillOnce(Return(expected_block->hash()));
+      .WillOnce(Return(expected_block.value()->hash()));
 
   // load block
-  auto sig = expected_block->signatures().begin();
+  auto sig = expected_block.value()->signatures().begin();
   auto &pubkey = sig->publicKey();
-  EXPECT_CALL(*block_loader, retrieveBlock(pubkey, expected_block->hash()))
+  EXPECT_CALL(*block_loader,
+              retrieveBlock(pubkey, expected_block.value()->hash()))
       .WillOnce(Return(boost::none))
-      .WillOnce(Return(expected_block));
+      .WillOnce(Return(expected_block.value()));
 
   init();
 
   // verify that yac gate emit expected block
   auto gate_wrapper = make_test_subscriber<CallExact>(gate->on_commit(), 1);
-  gate_wrapper.subscribe(
-      [this](auto block) { ASSERT_EQ(*block, *expected_block); });
+  gate_wrapper.subscribe([&expected_block](const auto &block) {
+    ASSERT_EQ(*block, *expected_block.value());
+  });
 
   ASSERT_TRUE(gate_wrapper.validate());
 }

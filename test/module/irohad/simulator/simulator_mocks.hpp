@@ -29,7 +29,7 @@ namespace iroha {
                    void(const shared_model::interface::Proposal &));
       MOCK_METHOD0(
           on_block,
-          rxcpp::observable<std::shared_ptr<shared_model::interface::Block>>());
+          rxcpp::observable<shared_model::interface::BlockVariantType>());
     };
   }  // namespace simulator
 }  // namespace iroha
