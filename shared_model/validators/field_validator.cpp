@@ -16,8 +16,11 @@
  */
 
 #include "validators/field_validator.hpp"
+
 #include <boost/algorithm/string_regex.hpp>
 #include <boost/format.hpp>
+#include <limits>
+
 #include "cryptography/crypto_provider/crypto_verifier.hpp"
 #include "permissions.hpp"
 
@@ -208,7 +211,20 @@ namespace shared_model {
     void FieldValidator::validatePrecision(
         ReasonsGroupType &reason,
         const interface::types::PrecisionType &precision) const {
-      // define precision constraints
+      /* The following validation is pointless since PrecisionType is already
+       * uint8_t, but it is going to be changed and the validation will become
+       * meaningful.
+       */
+      interface::types::PrecisionType min = std::numeric_limits<uint8_t>::min();
+      interface::types::PrecisionType max = std::numeric_limits<uint8_t>::max();
+      if (precision < min or precision > max) {
+        auto message =
+            (boost::format(
+                 "Precision value (%d) is out of allowed range [%d; %d]")
+             % precision % min % max)
+                .str();
+        reason.second.push_back(std::move(message));
+      }
     }
 
     void FieldValidator::validatePermission(
@@ -292,11 +308,11 @@ namespace shared_model {
 
     void FieldValidator::validateSignatures(
         ReasonsGroupType &reason,
-        const interface::SignatureSetType &signatures,
+        const interface::types::SignatureRangeType &signatures,
         const crypto::Blob &source) const {
       for (const auto &signature : signatures) {
-        const auto &sign = signature->signedData();
-        const auto &pkey = signature->publicKey();
+        const auto &sign = signature.signedData();
+        const auto &pkey = signature.publicKey();
         bool is_valid = true;
 
         if (sign.blob().size() != 64) {

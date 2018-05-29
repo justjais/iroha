@@ -313,7 +313,15 @@ TEST(ModelOperatorTest, SignatureTest) {
 
   ASSERT_EQ(sig1, sig2);
   sig1.signature[0] = 0x23;
-  ASSERT_NE(sig1, sig2);
+
+  // equals because public keys are same
+  ASSERT_EQ(sig1, sig2);
+
+  auto sig3 = createSignature();
+  sig3.pubkey[0] = 0x23;
+
+  // not equals because public keys are different
+  ASSERT_NE(sig1, sig3);
 }
 
 // -----|Transaction|-----
@@ -321,6 +329,7 @@ TEST(ModelOperatorTest, SignatureTest) {
 Transaction createTransaction() {
   Transaction transaction;
   transaction.created_ts = 1;
+  transaction.quorum = 1;
   transaction.creator_account_id = "132";
   transaction.signatures.push_back(createSignature());
 
@@ -351,7 +360,7 @@ TEST(ModelOperatorTest, TransactionTest) {
 
   ASSERT_EQ(tx1, tx2);
   tx1.signatures.push_back(createSignature());
-  ASSERT_NE(tx1, tx2);
+  ASSERT_EQ(tx1, tx2);  // signatures not affect on equality
 }
 
 // -----|Block|-----
