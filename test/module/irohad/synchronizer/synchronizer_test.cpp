@@ -83,7 +83,7 @@ TEST_F(SynchronizerTest, ValidWhenInitialized) {
   // synchronizer constructor => on_commit subscription called
   EXPECT_CALL(*consensus_gate, on_commit())
       .WillOnce(Return(rxcpp::observable<>::empty<
-                       std::shared_ptr<shared_model::interface::Block>>()));
+                       shared_model::interface::BlockVariantType>()));
 
   init();
 }
@@ -97,6 +97,7 @@ TEST_F(SynchronizerTest, ValidWhenSingleCommitSynchronized) {
   auto block = TestBlockBuilder().height(5).build();
   std::shared_ptr<shared_model::interface::Block> test_block =
       std::make_shared<shared_model::proto::Block>(std::move(block));
+  shared_model::interface::BlockVariantType test_block_variant = test_block;
 
   DefaultValue<expected::Result<std::unique_ptr<MutableStorage>, std::string>>::
       SetFactory(&createMockMutableStorage);
@@ -111,7 +112,7 @@ TEST_F(SynchronizerTest, ValidWhenSingleCommitSynchronized) {
 
   EXPECT_CALL(*consensus_gate, on_commit())
       .WillOnce(Return(rxcpp::observable<>::empty<
-                       std::shared_ptr<shared_model::interface::Block>>()));
+                       shared_model::interface::BlockVariantType>()));
 
   init();
 
@@ -126,7 +127,7 @@ TEST_F(SynchronizerTest, ValidWhenSingleCommitSynchronized) {
     ASSERT_TRUE(block_wrapper.validate());
   });
 
-  synchronizer->process_commit(test_block);
+  synchronizer->process_commit(test_block_variant);
 
   ASSERT_TRUE(wrapper.validate());
 }
@@ -139,6 +140,7 @@ TEST_F(SynchronizerTest, ValidWhenSingleCommitSynchronized) {
 TEST_F(SynchronizerTest, ValidWhenBadStorage) {
   std::shared_ptr<shared_model::interface::Block> test_block =
       std::make_shared<shared_model::proto::Block>(TestBlockBuilder().build());
+  shared_model::interface::BlockVariantType test_block_variant = test_block;
 
   DefaultValue<
       expected::Result<std::unique_ptr<MutableStorage>, std::string>>::Clear();
@@ -152,7 +154,7 @@ TEST_F(SynchronizerTest, ValidWhenBadStorage) {
 
   EXPECT_CALL(*consensus_gate, on_commit())
       .WillOnce(Return(rxcpp::observable<>::empty<
-                       std::shared_ptr<shared_model::interface::Block>>()));
+                       shared_model::interface::BlockVariantType>()));
 
   init();
 
@@ -160,7 +162,7 @@ TEST_F(SynchronizerTest, ValidWhenBadStorage) {
       make_test_subscriber<CallExact>(synchronizer->on_commit_chain(), 0);
   wrapper.subscribe();
 
-  synchronizer->process_commit(test_block);
+  synchronizer->process_commit(test_block_variant);
 
   ASSERT_TRUE(wrapper.validate());
 }
@@ -187,6 +189,7 @@ TEST_F(SynchronizerTest, ValidWhenValidChain) {
                            generateKeypair());
   std::shared_ptr<shared_model::interface::Block> test_block =
       std::make_shared<shared_model::proto::Block>(std::move(block));
+  shared_model::interface::BlockVariantType test_block_variant = test_block;
 
   DefaultValue<expected::Result<std::unique_ptr<MutableStorage>, std::string>>::
       SetFactory(&createMockMutableStorage);
@@ -204,7 +207,7 @@ TEST_F(SynchronizerTest, ValidWhenValidChain) {
 
   EXPECT_CALL(*consensus_gate, on_commit())
       .WillOnce(Return(rxcpp::observable<>::empty<
-                       std::shared_ptr<shared_model::interface::Block>>()));
+                       shared_model::interface::BlockVariantType>()));
 
   init();
 
@@ -219,7 +222,7 @@ TEST_F(SynchronizerTest, ValidWhenValidChain) {
     ASSERT_TRUE(block_wrapper.validate());
   });
 
-  synchronizer->process_commit(test_block);
+  synchronizer->process_commit(test_block_variant);
 
   ASSERT_TRUE(wrapper.validate());
 }
@@ -246,6 +249,7 @@ TEST_F(SynchronizerTest, InvalidWhenUnexpectedEnd) {
                            generateKeypair());
   std::shared_ptr<shared_model::interface::Block> test_block =
       std::make_shared<shared_model::proto::Block>(std::move(block));
+  shared_model::interface::BlockVariantType test_block_variant = test_block;
 
   DefaultValue<expected::Result<std::unique_ptr<MutableStorage>, std::string>>::
       SetFactory(&createMockMutableStorage);
@@ -275,7 +279,7 @@ TEST_F(SynchronizerTest, InvalidWhenUnexpectedEnd) {
 
   EXPECT_CALL(*consensus_gate, on_commit())
       .WillOnce(Return(rxcpp::observable<>::empty<
-                       std::shared_ptr<shared_model::interface::Block>>()));
+                       shared_model::interface::BlockVariantType>()));
 
   init();
 
@@ -283,7 +287,7 @@ TEST_F(SynchronizerTest, InvalidWhenUnexpectedEnd) {
       make_test_subscriber<CallExact>(synchronizer->on_commit_chain(), 0);
   wrapper.subscribe();
 
-  synchronizer->process_commit(test_block);
+  synchronizer->process_commit(test_block_variant);
 
   ASSERT_TRUE(wrapper.validate());
 }

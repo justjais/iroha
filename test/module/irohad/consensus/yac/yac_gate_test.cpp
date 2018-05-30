@@ -82,6 +82,15 @@ class YacGateTest : public ::testing::Test {
                                          delay);
   }
 
+  bool compareBlockVariants(
+      const shared_model::interface::BlockVariantType &lhs,
+      const shared_model::interface::BlockVariantType &rhs) {
+    return iroha::visit_in_place(lhs, [&rhs](const auto &lshp) {
+      return iroha::visit_in_place(
+          rhs, [&lshp](const auto &rshp) { return *lshp == *rshp; });
+    });
+  }
+
   YacHash expected_hash;
   shared_model::interface::BlockVariantType expected_block_variant;
   VoteMessage message;
@@ -100,9 +109,6 @@ class YacGateTest : public ::testing::Test {
  protected:
   YacGateTest() : commit_message(std::vector<VoteMessage>{}) {}
 };
-
-template <typename T>
-class Type;
 
 TEST_F(YacGateTest, YacGateSubscriptionTest) {
   cout << "----------| BlockCreator (block)=> YacGate (vote)=> "
@@ -130,12 +136,7 @@ TEST_F(YacGateTest, YacGateSubscriptionTest) {
   // verify that yac gate emit expected block
   auto gate_wrapper = make_test_subscriber<CallExact>(gate->on_commit(), 1);
   gate_wrapper.subscribe([this](const auto &block) {
-    auto expected_block = boost::apply_visitor(
-        shared_model::interface::SpecifiedVisitor<
-            std::shared_ptr<shared_model::interface::Block>>(),
-        expected_block_variant);
-    ASSERT_TRUE(expected_block);
-    ASSERT_EQ(*block, *expected_block.value());
+    ASSERT_TRUE(compareBlockVariants(block, expected_block_variant));
   });
 
   ASSERT_TRUE(gate_wrapper.validate());
@@ -210,8 +211,8 @@ TEST_F(YacGateTest, LoadBlockWhenDifferentCommit) {
 
   // verify that yac gate emit expected block
   auto gate_wrapper = make_test_subscriber<CallExact>(gate->on_commit(), 1);
-  gate_wrapper.subscribe([&expected_block](const auto &block) {
-    ASSERT_EQ(*block, *expected_block.value());
+  gate_wrapper.subscribe([this](const auto &block) {
+    ASSERT_TRUE(compareBlockVariants(block, expected_block_variant));
   });
 
   ASSERT_TRUE(gate_wrapper.validate());
@@ -271,9 +272,8 @@ TEST_F(YacGateTest, LoadBlockWhenDifferentCommitFailFirst) {
 
   // verify that yac gate emit expected block
   auto gate_wrapper = make_test_subscriber<CallExact>(gate->on_commit(), 1);
-  gate_wrapper.subscribe([&expected_block](const auto &block) {
-    ASSERT_EQ(*block, *expected_block.value());
-  });
+  gate_wrapper.subscribe(
+      [this](const auto &block) { ASSERT_EQ(block, expected_block_variant); });
 
   ASSERT_TRUE(gate_wrapper.validate());
 }

@@ -15,10 +15,12 @@
  * limitations under the License.
  */
 
-#include <utility>
-
-#include "ametsuchi/mutable_storage.hpp"
 #include "synchronizer/impl/synchronizer_impl.hpp"
+
+#include <utility>
+#include "ametsuchi/mutable_storage.hpp"
+#include "backend/protobuf/block.hpp"
+#include "backend/protobuf/empty_block.hpp"
 
 namespace iroha {
   namespace synchronizer {
@@ -33,8 +35,7 @@ namespace iroha {
           blockLoader_(std::move(blockLoader)) {
       log_ = logger::log("synchronizer");
       consensus_gate->on_commit().subscribe(
-          subscription_,
-          [&](std::shared_ptr<shared_model::interface::Block> block) {
+          subscription_, [&](shared_model::interface::BlockVariantType block) {
             this->process_commit(block);
           });
     }
@@ -44,7 +45,7 @@ namespace iroha {
     }
 
     void SynchronizerImpl::process_commit(
-        std::shared_ptr<shared_model::interface::Block> commit_message) {
+        shared_model::interface::BlockVariantType &commit_message_variant) {
       log_->info("processing commit");
       auto storageResult = mutableFactory_->createMutableStorage();
       std::unique_ptr<ametsuchi::MutableStorage> storage;
@@ -58,6 +59,21 @@ namespace iroha {
       if (not storage) {
         return;
       }
+
+      auto commit_message = iroha::visit_in_place(
+          commit_message_variant,
+          [](const std::shared_ptr<shared_model::interface::Block> block) {
+            return block;
+          },
+          [](const std::shared_ptr<shared_model::interface::EmptyBlock>
+                 empty_block)
+              -> std::shared_ptr<shared_model::interface::Block> {
+            auto proto_empty_block =
+                std::static_pointer_cast<shared_model::proto::EmptyBlock>(
+                    empty_block);
+            return std::make_shared<shared_model::proto::Block>(
+                proto_empty_block->getTransport());
+          });
 
       if (validator_->validateBlock(*commit_message, *storage)) {
         // Block can be applied to current storage

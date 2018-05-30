@@ -53,7 +53,7 @@ namespace integration_framework {
   class IntegrationTestFramework {
    private:
     using ProposalType = std::shared_ptr<shared_model::interface::Proposal>;
-    using BlockType = std::shared_ptr<shared_model::interface::Block>;
+    using BlockType = shared_model::interface::BlockVariantType;
 
    public:
     /**
@@ -72,8 +72,9 @@ namespace integration_framework {
             [](IntegrationTestFramework &itf) { itf.done(); },
         bool mst_support = false,
         const std::string &block_store_path =
-        (boost::filesystem::temp_directory_path()
-            / boost::filesystem::unique_path()).string());
+            (boost::filesystem::temp_directory_path()
+             / boost::filesystem::unique_path())
+                .string());
 
     ~IntegrationTestFramework();
 

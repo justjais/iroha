@@ -28,10 +28,12 @@ TEST(YacHashProviderTest, MakeYacHashTest) {
   shared_model::proto::Block block = TestBlockBuilder().build();
   block.addSignature(shared_model::crypto::Signed("data"),
                      shared_model::crypto::PublicKey("key"));
+  shared_model::interface::BlockVariantType block_variant =
+      std::make_shared<decltype(block)>(block.getTransport());
 
   auto hex_test_hash = block.hash().hex();
 
-  auto yac_hash = hash_provider.makeHash(block);
+  auto yac_hash = hash_provider.makeHash(block_variant);
 
   ASSERT_EQ(hex_test_hash, yac_hash.proposal_hash);
   ASSERT_EQ(hex_test_hash, yac_hash.block_hash);
@@ -43,7 +45,10 @@ TEST(YacHashProviderTest, ToModelHashTest) {
   block.addSignature(shared_model::crypto::Signed("data"),
                      shared_model::crypto::PublicKey("key"));
 
-  auto yac_hash = hash_provider.makeHash(block);
+  shared_model::interface::BlockVariantType block_variant =
+      std::make_shared<decltype(block)>(block.getTransport());
+
+  auto yac_hash = hash_provider.makeHash(block_variant);
 
   auto model_hash = hash_provider.toModelHash(yac_hash);
 
