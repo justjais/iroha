@@ -32,8 +32,6 @@
 #include "interfaces/queries/get_roles.hpp"
 #include "interfaces/queries/get_signatories.hpp"
 #include "interfaces/queries/get_transactions.hpp"
-#include "utils/string_builder.hpp"
-#include "utils/visitor_apply_for_all.hpp"
 
 namespace shared_model {
   namespace interface {
@@ -84,19 +82,9 @@ namespace shared_model {
 
       // ------------------------| Primitive override |-------------------------
 
-      std::string toString() const override {
-        return detail::PrettyStringBuilder()
-            .init("Query")
-            .append("creatorId", creatorAccountId())
-            .append("queryCounter", std::to_string(queryCounter()))
-            .append(Signable::toString())
-            .append(boost::apply_visitor(detail::ToStringVisitor(), get()))
-            .finalize();
-      }
+      std::string toString() const override;
 
-      bool operator==(const ModelType &rhs) const override {
-        return this->get() == rhs.get();
-      }
+      bool operator==(const ModelType &rhs) const override;
     };
   }  // namespace interface
 }  // namespace shared_model
