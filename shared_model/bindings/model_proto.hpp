@@ -38,9 +38,13 @@ namespace shared_model {
        * @param keypair - keypair to sign
        * @return blob of signed transaction
        */
-      crypto::Blob signAndAddSignature(Unsigned &us,
-                                       const crypto::Keypair &keypair) {
-        return us.signAndAddSignature(keypair).blob();
+      Unsigned signAndAddSignature(Unsigned &us,
+                                   const crypto::Keypair &keypair) {
+        return us.signAndAddSignature(keypair);
+      }
+
+      crypto::Blob finish(Unsigned &us) {
+        return us.finish().blob();
       }
     };
   }  // namespace bindings

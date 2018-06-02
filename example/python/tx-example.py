@@ -83,7 +83,7 @@ def print_status_streaming(tx):
 
 
 def send_tx(tx, key_pair):
-    tx_blob = proto_tx_helper.signAndAddSignature(tx, key_pair).blob()
+    tx_blob = proto_tx_helper.signAndAddSignature(tx, key_pair).finish().blob().blob()
     proto_tx = block_pb2.Transaction()
 
     if sys.version_info[0] == 2:
@@ -100,7 +100,7 @@ def send_tx(tx, key_pair):
 
 
 def send_query(query, key_pair):
-    query_blob = proto_query_helper.signAndAddSignature(query, key_pair).blob()
+    query_blob = proto_query_helper.signAndAddSignature(query, key_pair).finish().blob().blob()
 
     proto_query = queries_pb2.Query()
 

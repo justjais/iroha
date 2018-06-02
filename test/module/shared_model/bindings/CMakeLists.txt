@@ -66,7 +66,7 @@ if (SWIG_PYTHON)
     list(APPEND PROTO_SWIG_DEPS "${SWIG_BUILD_DIR}/${item}_pb2.py")
   endforeach(item)
 
-  add_custom_target(python_tests
+  add_custom_target(python_tests ALL
     DEPENDS "${PROTO_SWIG_DEPS}")
   foreach(test "python_transaction_test" "python_query_test")
     set_tests_properties(${test}

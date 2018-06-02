@@ -113,14 +113,14 @@ class BuilderTest(unittest.TestCase):
       .creatorAccountId("admin@test")
 
   def proto(self, tx):
-    return iroha.ModelProtoTransaction().signAndAddSignature(tx, self.keys)
+    return iroha.ModelProtoTransaction().signAndAddSignature(tx, self.keys).finish()
 
   def check_proto_tx(self, blob):
     try:
       if sys.version_info[0] == 2:
-        tmp = ''.join(map(chr, blob.blob()))
+        tmp = ''.join(map(chr, blob.blob().blob()))
       else:
-        tmp = bytes(blob.blob())
+        tmp = bytes(blob.blob().blob())
       blk.Transaction.FromString(tmp)
     except DecodeError as e:
       print(e)

@@ -114,14 +114,14 @@ class BuilderTest(unittest.TestCase):
       .creatorAccountId("admin@test")
 
   def proto(self, query):
-    return iroha.ModelProtoQuery().signAndAddSignature(query, self.keys)
+    return iroha.ModelProtoQuery().signAndAddSignature(query, self.keys).finish()
 
   def check_proto_query(self, blob):
     try:
       if sys.version_info[0] == 2:
-        tmp = ''.join(map(chr, blob.blob()))
+        tmp = ''.join(map(chr, blob.blob().blob()))
       else:
-        tmp = bytes(blob.blob())
+        tmp = bytes(blob.blob().blob())
       qry.Query.FromString(tmp)
     except DecodeError as e:
       print(e)

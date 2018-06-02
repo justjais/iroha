@@ -40,7 +40,7 @@ var tx = txBuilder
   .build()
 
 // sign transaction and get its binary representation (Blob)
-var txblob = protoTxHelper.signAndAddSignature(tx, keys).blob()
+var txblob = protoTxHelper.signAndAddSignature(tx, keys).finish().blob().blob()
 var txArray = blob2array(txblob)
 // create proto object and send to iroha
 var blockTransaction = require('iroha-lib/pb/block_pb.js').Transaction // block_pb2.Transaction()
@@ -108,7 +108,7 @@ p
       .queryCounter(startQueryCounter)
       .getAssetInfo('dollar#ru')
       .build()
-    let queryBlob = protoQueryHelper.signAndAddSignature(query, keys).blob()
+    let queryBlob = protoQueryHelper.signAndAddSignature(query, keys).finish().blob().blob()
     let pbQuery = require('iroha-lib/pb/queries_pb.js').Query
     let queryArray = blob2array(queryBlob)
     let protoQuery = pbQuery.deserializeBinary(queryArray)

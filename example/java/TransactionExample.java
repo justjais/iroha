@@ -80,7 +80,7 @@ class TransactionExample {
             .createAsset("dollar", "ru", (short)2).build();
 
         // sign transaction and get its binary representation (Blob)
-        ByteVector txblob = protoTxHelper.signAndAddSignature(utx, keys).blob();
+        ByteVector txblob = protoTxHelper.signAndAddSignature(utx, keys).finish().blob().blob();
 
         // Convert ByteVector to byte array
         byte bs[] = toByteArray(txblob);
@@ -130,7 +130,7 @@ class TransactionExample {
             .createdTime(BigInteger.valueOf(currentTime))
             .getAssetInfo("dollar#ru")
             .build();
-        ByteVector queryBlob = protoQueryHelper.signAndAddSignature(uquery, keys).blob();
+        ByteVector queryBlob = protoQueryHelper.signAndAddSignature(uquery, keys).finish().blob().blob();
         byte bquery[] = toByteArray(queryBlob);
 
         Query protoQuery = null;
